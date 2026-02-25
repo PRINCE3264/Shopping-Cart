@@ -1,222 +1,111 @@
-Next.js Shopping Project — non-code specification & step-by-step description
+🛒 Shopping Cart  (Next.js)
 
-Nice — below is a complete, non-code project write-up you can use as documentation, a README, or hand off to a developer. It covers features you asked for (register → verify OTP → login → add to cart → checkout & payment → order details → logout) plus acceptance tests, UI/UX text, data model descriptions, API surface (conceptual), QA checklist and deployment notes. I avoided code — only high-level design and step-by-step flows.
+A full-stack Shopify-style E-Commerce web application built using Next.js App Router, Prisma, and JWT authentication.
+This project includes user authentication with OTP verification, product management, cart system, and order workflow.
 
-1) Project overview (one-sentence)
+🚀 Features
 
-A Next.js e-commerce frontend with secure user registration (OTP verification), sessioned login, shopping cart, checkout with payment, order details and logout — designed for fast UX and easy backend integration.
+User registration & login with OTP verification
 
-2) Key features (summary)
+Secure authentication using JWT
 
-Email/phone Register with OTP verification (one-time passcode).
+Product listing & product details page
 
-Login with session (JWT or cookie) and role support (user/admin).
+Shopping cart (add / remove / update items)
 
-Product listing & detail pages.
+Checkout & order history
 
-Add to cart (persisted across sessions when logged in).
+Email notifications using Nodemailer
 
-Checkout flow with address selection, order summary, payment integration (third-party like Stripe/PayPal).
+Backend APIs using Next.js App Router
 
-Order confirmation & details page (view status, items, payment info).
+Database handled with Prisma ORM
 
-Logout that clears session and local cart.
+Responsive UI
 
-Account area: order history, profile, manage addresses.
+🧑‍💻 Tech Stack
 
-Basic security: rate-limit OTP, reCAPTCHA option, server side validation.
+Frontend: Next.js (App Router), TypeScript
 
-Mobile-first responsive UI.
+Backend: Next.js API Routes
 
-3) User flows — step-by-step (exact text you can show stakeholders)
-A. Register → Verify OTP → Login
+Database: MySQL / PostgreSQL
 
-User lands on Sign Up page and enters: name, email (or phone), password (and confirm), optionally mobile number.
+ORM: Prisma
 
-User clicks Send OTP. Frontend validates form format and calls backend: POST /auth/send-otp.
+Authentication: JWT + OTP
 
-Backend sends numeric OTP to provided contact (email/SMS). UI shows "OTP sent" screen with masked contact and timer (60s).
+Email: Nodemailer
 
-User enters OTP and clicks Verify. Frontend calls POST /auth/verify-otp with OTP token and temp identifier.
+app/
+ ├─ api/
+ │   ├─ auth/
+ │   ├─ products/
+ │   ├─ cart/
+ │   └─ orders/
+ ├─ products/
+ ├─ cart/
+ ├─ checkout/
+ └─ orders/
 
-If OTP valid, backend creates user account (or marks contact verified) and returns success + auth token (or instruct to login). UI shows success and redirect to Login or automatically logs user in.
+lib/
+ ├─ prisma.ts
+ ├─ auth.ts
 
-If OTP invalid or expired, show clear error and option to Resend OTP (with cooldown).
+prisma/
+ ├─ schema.prisma
 
-Edge cases & UX notes
 
-Show friendly copy: “We sent a 6-digit code to ***@gmail.com. Didn’t receive it? Resend in 45s.”
+ git clone https://github.com/PRINCE3264/Shopping-Cart.git
+cd Shopping-Cart
 
-Allow small OTP entry mistakes: display helpful errors (e.g., “Code expired — request a new one.”)
 
-Rate-limit OTP requests and display cooldown.
+npm install
 
-B. Login
 
-User enters email/phone + password on Login page.
+.env
 
-Frontend validates and posts to POST /auth/login.
+DATABASE_URL=your_database_url
+JWT_SECRET=your_jwt_secret
+EMAIL_USER=your_email
+EMAIL_PASS=your_email_password
 
-On success, store auth token in secure cookie (HTTPOnly) or localStorage (if small demo) and redirect to homepage or previously visited page.
 
-On failure, show error messages (invalid credentials, account not verified).
+npx prisma generate
+npx prisma migrate dev
 
-UX copy: “Welcome back — enter your credentials to continue.”
 
-C. Browse, Add to Cart
+npm run dev  
 
-User browses product list or product page.
 
-Click Add to Cart (choose quantity / options if needed).
 
-If user is not logged in, prompt: “Sign in to save your cart” — allow temporary cart in localStorage and then merge after login.
 
-If logged in, update cart on backend (POST /cart/add) and reflect cart count in header.
+📬 API Testing
 
-Cart behavior
+You can test APIs using Postman:
 
-Show toast: “Added to cart” with “View cart” button.
+POST /api/auth/register
 
-Cart persists across devices once user logs in (cart merge: merge server + local items with last-write or quantity sum policy).
+POST /api/auth/login
 
-D. Checkout → Payment
+POST /api/auth/verify-otp
 
-User opens Cart → clicks Checkout.
+GET /api/products
 
-Checkout steps: Shipping address → Shipping method → Payment method → Review order.
+POST /api/cart
 
-Payment integration:
+POST /api/orders
 
-Client obtains a payment token/intention from backend (POST /payments/create-intent) and completes payment via SDK (Stripe/PayPal).
+🎯 Purpose of Project
 
-Backend verifies payment webhook and finalizes order.
+This project was built to:
 
-On successful payment, show Order Confirmation page with order ID, summary, shipping ETA, and email confirmation.
+Learn Next.js full-stack development
 
-If payment fails, show retry options and store pending order for support.
+Understand authentication & OTP flows
 
-UX copy: “Almost there — review your items and complete secure payment.”
+Practice real-world e-commerce logic
 
-E. Order Details & History
+Build a resume-ready full-stack project
 
-After purchase, user can view Order Details from account or order confirmation page.
 
-Order details include: order ID, date/time, items, quantities, unit price, subtotal, tax, shipping, total, payment status, shipping address and tracking (if available).
-
-Order history lists past orders with quick actions: “View”, “Cancel (if allowed)”, “Download Invoice”.
-
-F. Logout
-
-User clicks Logout in account menu.
-
-Frontend calls POST /auth/logout (optional) and clears local session (cookie/localStorage/cart UI).
-
-Redirect to homepage and show “You have been logged out.”
-
-4) Pages & components (non-code list)
-
-Public pages: Home, Product List, Product Detail, About, Contact.
-
-Auth pages: Register (OTP), Verify OTP, Login, Forgot Password.
-
-Cart & Checkout: Cart Page, Checkout Multi-step, Payment Handler.
-
-Account: Dashboard, Order History, Order Detail, Addresses, Profile Settings.
-
-Shared components: Header (cart badge), Footer, Product Card, Quantity Selector, Modal/Dialog, Toast Notifications.
-
-Admin (optional): Product Management, Order Management, OTP logs.
-
-5) Data model (conceptual entities & fields)
-
-User
-
-id, name, email, phone, passwordHash, isVerified, createdAt, lastLogin
-
-OTP
-
-id, userId (nullable pre-registration), contactValue, otpCode (hashed or ephemeral token), expiresAt, attempts
-
-Product
-
-id, name, sku, description, price, images[], stock, categories[], variants[]
-
-CartItem
-
-id, userId (nullable), productId, quantity, priceAtAdd, options
-
-Order
-
-id, userId, items[], subtotal, tax, shipping, total, status (pending/confirmed/shipped/cancelled), paymentInfo, createdAt
-
-Address
-
-id, userId, label, line1, line2, city, state, postalCode, country, phone
-
-6) Conceptual API (descriptive names, not code)
-
-POST /auth/send-otp — request OTP for email/phone.
-
-POST /auth/verify-otp — verify code & create/confirm account.
-
-POST /auth/login — authenticate.
-
-POST /auth/logout — invalidate session.
-
-GET /products — list with filters/pagination.
-
-GET /products/:id — product detail.
-
-POST /cart — add/update cart item (auth optional).
-
-GET /cart — get current cart.
-
-POST /checkout — create checkout session (returns payment intent).
-
-POST /payments/webhook — payment provider webhook to finalize order.
-
-GET /orders/:id — get order details (auth required).
-
-GET /orders — order history.
-
-7) Acceptance criteria & QA test scenarios (non-code, testable)
-
-Use these as “proof” that the feature works — each step has expected result.
-
-Register & OTP
-
-TC1: Submit valid email → OTP sent message displayed + masked contact shown.
-
-TC2: Enter correct OTP within time → account verified and either auto-logged in or redirected to login.
-
-TC3: Enter wrong OTP → error “Invalid code”.
-
-TC4: Resend OTP blocked for 60s → UI shows cooldown.
-
-Login
-
-TC5: Login with correct credentials → user lands on homepage and cart merges.
-
-TC6: Wrong password → show “Invalid credentials”.
-
-Add to cart
-
-TC7: Add item as guest → cart persists in localStorage and visible.
-
-TC8: Login after guest cart → server cart updated to include local items (merging rule applied).
-
-TC9: Add > stock quantity → show validation message “Only X items left”.
-
-Checkout & Payment
-
-TC10: Successful payment → order status “confirmed”, confirmation page shown, and email sent.
-
-TC11: Payment failure → order not created/kept as pending; user can retry.
-
-TC12: Network interruption mid-payment → frontend shows clear state and handling to avoid duplicate charges (idempotency).
-
-Order details & Logout
-
-TC13: Order details page shows correct items, prices and payment status.
-
-TC14: Logout clears session and redirects to homepage.
