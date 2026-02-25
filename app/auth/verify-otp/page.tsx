@@ -2,7 +2,7 @@
 
 // app/verify-otp/page.tsx
 
-"use client"; 
+"use client";
 import { useState, FormEvent, useEffect } from 'react';
 import { Lock, Mail, Loader2, ArrowLeft } from 'lucide-react';
 
@@ -35,7 +35,7 @@ const useSearchParams = () => {
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get('userId') || '';
         const email = urlParams.get('email') || 'user@example.com';
-        
+
         setParams({ userId, email });
       }
     }, 0);
@@ -62,7 +62,7 @@ interface VerificationState {
 export default function VerifyOtpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const [isClient, setIsClient] = useState(false);
   const userId = searchParams.get("userId");
   const userEmail = searchParams.get("email");
@@ -82,9 +82,9 @@ export default function VerifyOtpPage() {
     const timer = setTimeout(() => {
       setIsClient(true);
       if (userEmail) {
-        setState(prev => ({ 
-          ...prev, 
-          message: `Verification code sent to ${userEmail}` 
+        setState(prev => ({
+          ...prev,
+          message: `Verification code sent to ${userEmail}`
         }));
       }
     }, 0);
@@ -116,30 +116,30 @@ export default function VerifyOtpPage() {
       const response = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           identifier: identifier, // This should be the email
-          otp: otpString 
+          otp: otpString
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setState(prev => ({ 
-          ...prev, 
+        setState(prev => ({
+          ...prev,
           message: "Verification successful! Redirecting to home page...",
-          isLoading: false 
+          isLoading: false
         }));
-        
+
         // Store access token in localStorage or context
         if (data.accessToken) {
           localStorage.setItem('accessToken', data.accessToken);
           localStorage.setItem('user', JSON.stringify(data.user));
         }
-        
-        // Redirect to Home page
+
+        // Redirect to Profile page
         setTimeout(() => {
-          router.push("/auth/login");
+          router.push("/profile");
         }, 2000);
       } else {
         setState(prev => ({
@@ -150,17 +150,17 @@ export default function VerifyOtpPage() {
       }
     } catch (error) {
       console.error("Verification error:", error);
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         error: "Network or server error. Please try again later.",
-        isLoading: false 
+        isLoading: false
       }));
     }
   };
 
   const handleChange = (index: number, value: string) => {
     if (!/^\d?$/.test(value)) return;
-    
+
     const newOtp = [...state.otp];
     newOtp[index] = value;
     setState(prev => ({ ...prev, otp: newOtp, error: null }));
@@ -192,7 +192,7 @@ export default function VerifyOtpPage() {
       const newOtp = pastedData.split('').slice(0, 6);
       const filledOtp = [...newOtp, ...Array(6 - newOtp.length).fill("")];
       setState(prev => ({ ...prev, otp: filledOtp, error: null }));
-      
+
       const lastFilledIndex = Math.min(newOtp.length, 5);
       const lastInput = document.getElementById(`otp-${lastFilledIndex}`);
       if (lastInput) lastInput.focus();
@@ -206,7 +206,7 @@ export default function VerifyOtpPage() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const otpString = state.otp.join('');
-    
+
     // Validate OTP before submission
     if (!otpString || otpString.length !== 6) {
       setState(prev => ({
@@ -229,7 +229,7 @@ export default function VerifyOtpPage() {
 
   const handleResend = async () => {
     if (!userEmail || resendCountdown > 0) return;
-    
+
     setResendMessage("Sending new code...");
 
     try {
@@ -244,13 +244,13 @@ export default function VerifyOtpPage() {
 
       if (response.ok) {
         setResendMessage("New verification code sent!");
-        setState(prev => ({ 
-          ...prev, 
-          error: null, 
+        setState(prev => ({
+          ...prev,
+          error: null,
           otp: ["", "", "", "", "", ""],
           message: "New verification code sent to your email"
         }));
-        
+
         // Start countdown timer
         setResendCountdown(30);
         const countdownInterval = setInterval(() => {
@@ -324,16 +324,14 @@ export default function VerifyOtpPage() {
             {/* Status Messages */}
             {(state.error || state.message) && (
               <div
-                className={`mb-6 p-4 rounded-xl text-sm transition-all duration-300 ${
-                  state.error 
-                    ? "bg-red-50 text-red-700 border border-red-200" 
+                className={`mb-6 p-4 rounded-xl text-sm transition-all duration-300 ${state.error
+                    ? "bg-red-50 text-red-700 border border-red-200"
                     : "bg-green-50 text-green-700 border border-green-200"
-                }`}
+                  }`}
               >
                 <div className="flex items-center">
-                  <div className={`w-2 h-2 rounded-full mr-3 ${
-                    state.error ? "bg-red-500" : "bg-green-500"
-                  }`}></div>
+                  <div className={`w-2 h-2 rounded-full mr-3 ${state.error ? "bg-red-500" : "bg-green-500"
+                    }`}></div>
                   {state.error || state.message}
                 </div>
               </div>
@@ -345,7 +343,7 @@ export default function VerifyOtpPage() {
                 <label className="text-sm font-medium text-gray-700 text-center">
                   Enter 6-digit verification code
                 </label>
-                
+
                 <div className="flex space-x-3" onPaste={handlePaste}>
                   {state.otp.map((digit, index) => (
                     <input
@@ -363,7 +361,7 @@ export default function VerifyOtpPage() {
                     />
                   ))}
                 </div>
-                
+
                 <p className="text-xs text-gray-500 text-center">
                   Code will expire in 5 minutes
                 </p>
@@ -373,11 +371,10 @@ export default function VerifyOtpPage() {
               <button
                 type="submit"
                 disabled={state.isLoading || fullOtp.length !== 6 || !userEmail}
-                className={`w-full flex items-center justify-center py-4 px-4 border border-transparent rounded-xl shadow-lg text-base font-semibold text-white transition-all duration-200 ${
-                  state.isLoading || fullOtp.length !== 6 || !userEmail
+                className={`w-full flex items-center justify-center py-4 px-4 border border-transparent rounded-xl shadow-lg text-base font-semibold text-white transition-all duration-200 ${state.isLoading || fullOtp.length !== 6 || !userEmail
                     ? "bg-indigo-400 cursor-not-allowed"
                     : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                }`}
+                  }`}
               >
                 {state.isLoading ? (
                   <>
@@ -403,9 +400,8 @@ export default function VerifyOtpPage() {
                 </button>
               </p>
               {resendMessage && (
-                <p className={`text-xs mt-2 ${
-                  resendMessage.includes("sent") ? "text-green-600" : "text-blue-600"
-                }`}>
+                <p className={`text-xs mt-2 ${resendMessage.includes("sent") ? "text-green-600" : "text-blue-600"
+                  }`}>
                   {resendMessage}
                 </p>
               )}

@@ -1,0 +1,68 @@
+[
+    {
+        "name": "Ethereal Silk Shirt",
+        "description": "Hand-woven mulberry silk shirt with a minimalist architectural cut and hidden placket. Designed for effortless elegance.",
+        "price": 4500,
+        "stock": 25,
+        "category": "Apparel",
+        "rating": 4.9,
+        "images": [
+            "https://images.unsplash.com/photo-1598033129183-c4f50c717658?q=80&w=800"
+        ]
+    },
+    {
+        "name": "Obsidian Tech Blazer",
+        "description": "Water-resistant, wrinkle-free technical blazer featuring laser-cut seams and a tailored silhouette. The future of formal wear.",
+        "price": 8900,
+        "stock": 15,
+        "category": "Outerwear",
+        "rating": 4.8,
+        "images": [
+            "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?q=80&w=800"
+        ]
+    },
+    {
+        "name": "Nomad Leather Weekender",
+        "description": "Full-grain Italian leather bag with a dedicated tech compartment and brass hardware. Your perfect travel companion.",
+        "price": 12500,
+        "stock": 10,
+        "category": "Accessories",
+        "rating": 5.0,
+        "images": [
+            "https://images.unsplash.com/photo-1547949003-9792a18a2601?q=80&w=800"
+        ]
+    },
+    {
+        "name": "Gravity Compression Joggers",
+        "description": "Premium loopback cotton joggers with high-density printing and reinforced knees. Built for both intensity and leisure.",
+        "price": 3200,
+        "stock": 40,
+        "category": "Athleisure",
+        "rating": 4.7,
+        "images": [
+            "https://images.unsplash.com/photo-1506629082955-511b1aa562c8?q=80&w=800"
+        ]
+    },
+    {
+        "name": "Zenith Mineral Watch",
+        "description": "Brushed titanium case with a sapphire crystal and a custom Swiss movement. Time, refined.",
+        "price": 18500,
+        "stock": 8,
+        "category": "Accessories",
+        "rating": 4.9,
+        "images": [
+            "https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=800"
+        ]
+    },
+    {
+        "name": "Arc Tapered Denim",
+        "description": "14oz Japanese selvedge denim with a natural indigo dye and a precise tapered fit. Ages with character.",
+        "price": 5800,
+        "stock": 30,
+        "category": "Bottoms",
+        "rating": 4.6,
+        "images": [
+            "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?q=80&w=800"
+        ]
+    }
+]

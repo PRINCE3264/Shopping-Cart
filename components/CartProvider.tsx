@@ -1,110 +1,7 @@
-
-// "use client";
-
-// import React, { createContext, useContext, useMemo, useState } from "react";
-
-// export type CartItem = {
-//   id: string | number;
-//   title: string;
-//   price: number;
-//   img?: string;
-//   qty: number;
-// };
-
-// export type CartContextValue = {
-//   items: CartItem[];
-//   total: number;
-//   count: number;
-//   // add helpers (all provided for compatibility)
-//   add: (item: Omit<CartItem, "qty"> & { qty?: number }) => void;
-//   addItem: (item: Omit<CartItem, "qty"> & { qty?: number }) => void;
-//   addToCart: (item: Omit<CartItem, "qty"> & { qty?: number }) => void;
-//   remove: (id: string | number) => void;
-//   updateQty: (id: string | number, qty: number) => void;
-//   clear: () => void;
-// };
-
-// const CartContext = createContext<CartContextValue | undefined>(undefined);
-
-// export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-//   const [items, setItems] = useState<CartItem[]>([]);
-
-//   const addImpl = (payload: Omit<CartItem, "qty"> & { qty?: number }) => {
-//     const id = payload.id;
-//     const qtyToAdd = payload.qty && payload.qty > 0 ? Math.floor(payload.qty) : 1;
-
-//     setItems((prev) => {
-//       const existingIndex = prev.findIndex((p) => String(p.id) === String(id));
-//       if (existingIndex >= 0) {
-//         // increment qty
-//         const copy = [...prev];
-//         copy[existingIndex] = {
-//           ...copy[existingIndex],
-//           qty: copy[existingIndex].qty + qtyToAdd,
-//         };
-//         return copy;
-//       }
-//       // add new
-//       return [
-//         ...prev,
-//         {
-//           id,
-//           title: payload.title,
-//           price: payload.price,
-//           img: payload.img,
-//           qty: qtyToAdd,
-//         },
-//       ];
-//     });
-//   };
-
-//   const remove = (id: string | number) =>
-//     setItems((prev) => prev.filter((it) => String(it.id) !== String(id)));
-
-//   const updateQty = (id: string | number, qty: number) =>
-//     setItems((prev) =>
-//       prev.map((it) =>
-//         String(it.id) === String(id) ? { ...it, qty: Math.max(1, Math.floor(qty)) } : it
-//       )
-//     );
-
-//   const clear = () => setItems([]);
-
-//   const total = useMemo(
-//     () => items.reduce((s, it) => s + it.price * it.qty, 0),
-//     [items]
-//   );
-
-//   const count = useMemo(() => items.reduce((s, it) => s + it.qty, 0), [items]);
-
-//   const contextValue: CartContextValue = {
-//     items,
-//     total,
-//     count,
-//     add: addImpl,
-//     addItem: addImpl,
-//     addToCart: addImpl,
-//     remove,
-//     updateQty,
-//     clear,
-//   };
-
-//   return <CartContext.Provider value={contextValue}>{children}</CartContext.Provider>;
-// };
-
-// export const useCart = (): CartContextValue => {
-//   const ctx = useContext(CartContext);
-//   if (!ctx) throw new Error("useCart must be used inside CartProvider");
-//   return ctx;
-// };
-// components/CartProvider.tsx
-
-
-
-// components/CartProvider.tsx
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { toast } from 'react-hot-toast';
 
 export interface CartItem {
   id: string;
@@ -115,18 +12,18 @@ export interface CartItem {
 }
 
 interface CartContextValue {
-  // Original properties
   cart: CartItem[];
   addToCart: (item: Omit<CartItem, 'qty'>) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, qty: number) => void;
   clearCart: () => void;
   cartCount: number;
-  
-  // Additional properties for compatibility
+  total: number;
+  isLoading: boolean;
+
+  // Compatibility Aliases
   items: CartItem[];
   count: number;
-  total: number;
   clear: () => void;
   updateQty: (id: string, qty: number) => void;
   remove: (id: string) => void;
@@ -134,48 +31,172 @@ interface CartContextValue {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [mounted, setMounted] = useState(false);
+const SESSION_KEY = "cart_sessionId";
+const USER_LS_KEY = "user";
 
-  useEffect(() => {
-    setMounted(true);
+const dedupeCart = (items: CartItem[]): CartItem[] => {
+  const map = new Map<string, CartItem>();
+  items.forEach(item => {
+    const id = String(item.id);
+    if (map.has(id)) {
+      const existing = map.get(id)!;
+      map.set(id, { ...existing, qty: existing.qty + item.qty });
+    } else {
+      map.set(id, { ...item });
+    }
+  });
+  return Array.from(map.values());
+};
+
+export function CartProvider({ children }: { children: React.ReactNode }) {
+  const [cart, _setCart] = useState<CartItem[]>([]);
+  const setCart = useCallback((val: CartItem[] | ((prev: CartItem[]) => CartItem[])) => {
+    _setCart(prev => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      return dedupeCart(next);
+    });
+  }, []);
+
+  const [mounted, setMounted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Get current user ID
+  const getUserId = () => {
     try {
-      const savedCart = localStorage.getItem('cart_v1');
-      if (savedCart) {
-        setCart(JSON.parse(savedCart));
+      const userRaw = localStorage.getItem(USER_LS_KEY);
+      if (userRaw) {
+        const user = JSON.parse(userRaw);
+        return user.id;
       }
-    } catch (error) {
-      console.error('Error loading cart from localStorage:', error);
+    } catch (e) {
+      return null;
+    }
+    return null;
+  };
+
+  // Get or create session ID
+  const getSessionId = () => {
+    let sid = localStorage.getItem(SESSION_KEY);
+    if (!sid) {
+      sid = "sess_" + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem(SESSION_KEY, sid);
+    }
+    return sid;
+  };
+
+  // Sync with DB
+  const syncWithDb = useCallback(async (currentCart: CartItem[]) => {
+    const userId = getUserId();
+    const sessionId = getSessionId();
+
+    // We only sync if we have something or we want to clear
+    // For now, let's sync every change
+    try {
+      // In a real app, we'd debounced this
+      // For each item in cart, we send a POST
+      // A more efficient way would be a bulk sync API, 
+      // but let's use what we have or implement one.
+
+      // Let's just focus on the active change for now in the add/remove functions
+    } catch (e) {
+      console.error("Sync error:", e);
     }
   }, []);
 
+  // Fetch initial cart from DB or LocalStorage
+  useEffect(() => {
+    setMounted(true);
+    const initCart = async () => {
+      setIsLoading(true);
+      const userId = getUserId();
+      const sessionId = getSessionId();
+
+      try {
+        const res = await fetch(`/api/cart?userId=${userId || ""}&sessionId=${sessionId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.items) {
+            const mergedItems = data.items.reduce((acc: CartItem[], it: any) => {
+              const productId = it.product.id;
+              const existing = acc.find(item => item.id === productId);
+              if (existing) {
+                existing.qty += it.qty;
+              } else {
+                acc.push({
+                  id: productId,
+                  title: it.product.name,
+                  price: it.priceSnapshot,
+                  img: it.product.images?.[0] || "",
+                  qty: it.qty
+                });
+              }
+              return acc;
+            }, []);
+            setCart(mergedItems);
+          } else {
+            // Fallback to localStorage if DB cart is empty
+            const saved = localStorage.getItem('cart_v1');
+            if (saved) setCart(JSON.parse(saved));
+          }
+        }
+      } catch (e) {
+        const saved = localStorage.getItem('cart_v1');
+        if (saved) setCart(JSON.parse(saved));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initCart();
+  }, []);
+
+  // Save to LocalStorage whenever cart changes
   useEffect(() => {
     if (mounted) {
-      try {
-        localStorage.setItem('cart_v1', JSON.stringify(cart));
-      } catch (error) {
-        console.error('Error saving cart to localStorage:', error);
-      }
+      localStorage.setItem('cart_v1', JSON.stringify(cart));
     }
   }, [cart, mounted]);
 
-  const addToCart = (item: Omit<CartItem, 'qty'>) => {
+  const addToCart = async (item: Omit<CartItem, 'qty'>) => {
+    const userId = getUserId();
+    const sessionId = getSessionId();
+
     setCart(prev => {
-      const existing = prev.find(cartItem => cartItem.id === item.id);
+      const existing = prev.find(it => it.id === item.id);
+      let newCart;
       if (existing) {
-        return prev.map(cartItem =>
-          cartItem.id === item.id
-            ? { ...cartItem, qty: cartItem.qty + 1 }
-            : cartItem
-        );
+        newCart = prev.map(it => it.id === item.id ? { ...it, qty: it.qty + 1 } : it);
+      } else {
+        newCart = [...prev, { ...item, qty: 1 }];
       }
-      return [...prev, { ...item, qty: 1 }];
+
+      // Async update DB
+      const targetQty = existing ? existing.qty + 1 : 1;
+      fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, sessionId, productId: item.id, qty: targetQty })
+      });
+
+      return newCart;
     });
+
+    toast.success(`${item.title} added to cart`);
   };
 
   const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(item => item.id !== id));
+    const userId = getUserId();
+    const sessionId = getSessionId();
+
+    setCart(prev => {
+      const item = prev.find(it => it.id === id);
+      if (item) {
+        fetch(`/api/cart?userId=${userId || ""}&sessionId=${sessionId}&productId=${id}`, {
+          method: "DELETE"
+        });
+      }
+      return prev.filter(it => it.id !== id);
+    });
   };
 
   const updateQuantity = (id: string, qty: number) => {
@@ -183,39 +204,52 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeFromCart(id);
       return;
     }
-    setCart(prev => prev.map(item => item.id === id ? { ...item, qty } : item));
+
+    const userId = getUserId();
+    const sessionId = getSessionId();
+
+    setCart(prev => {
+      const updated = prev.map(it => it.id === id ? { ...it, qty } : it);
+
+      fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, sessionId, productId: id, qty })
+      });
+
+      return updated;
+    });
   };
 
   const clearCart = () => {
+    const userId = getUserId();
+    const sessionId = getSessionId();
+
     setCart([]);
+    fetch(`/api/cart?userId=${userId || ""}&sessionId=${sessionId}`, {
+      method: "DELETE"
+    });
   };
 
-  const cartCount = cart.reduce((total, item) => total + item.qty, 0);
-  const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-
-  // Aliases for compatibility
-  const items = cart;
-  const count = cartCount;
-  const clear = clearCart;
-  const updateQty = updateQuantity;
-  const remove = removeFromCart;
+  const cartCount = cart.reduce((acc, item) => acc + item.qty, 0);
+  const total = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
 
   const value: CartContextValue = {
-    // Original names
     cart,
     addToCart,
     removeFromCart,
     updateQuantity,
     clearCart,
     cartCount,
-    
-    // Aliases for compatibility
-    items,
-    count,
     total,
-    clear,
-    updateQty,
-    remove
+    isLoading,
+
+    // Aliases
+    items: cart,
+    count: cartCount,
+    clear: clearCart,
+    updateQty: updateQuantity,
+    remove: removeFromCart
   };
 
   return (
@@ -227,8 +261,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
 export function useCart(): CartContextValue {
   const ctx = useContext(CartContext);
-  if (!ctx) {
-    throw new Error("useCart must be used inside CartProvider");
-  }
+  if (!ctx) throw new Error("useCart must be used inside CartProvider");
   return ctx;
 }

@@ -1,524 +1,306 @@
-// // app/products/[id]/page.tsx
-// import React from "react";
-// import Link from "next/link";
-// import { makeProducts, Product as LibProduct } from "@/lib/products";
-
-// /**
-//  * Server component wrapper: finds product by id and renders client component
-//  */
-// export default function ProductPage({ params }: { params: { id: string } }) {
-//   const { id } = params;
-//   const products = makeProducts();
-//   const product = products.find((p) => p.id === id);
-
-//   if (!product) {
-//     return (
-//       <div className="min-h-[60vh] flex items-center justify-center">
-//         <div className="text-center">
-//           <h2 className="text-2xl font-semibold mb-2">Product not found</h2>
-//           <p className="text-gray-500 mb-4">We couldnt find the product you were looking for.</p>
-//           <Link href="/products" className="text-indigo-600 hover:underline">Back to products</Link>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   // Render the client component with product data
-//   return <ProductDetailClient product={product} />;
-// }
-
-// /* --------------------- Client component --------------------- */
-// "use client";
-// import Image from "next/image";
-// import { motion } from "framer-motion";
-// import { useState } from "react";
-// import { useCart } from "@/components/CartProvider";
-// import { toast } from "react-hot-toast";
-
-// /** Reuse the Product type from your lib (kept local type for easy editing) */
-// type Product = LibProduct;
-
-// function ProductDetailClient({ product }: { product: Product }) {
-//   const { add, addToCart, addItem } = useCart() as any; // support multiple names
-//   const [qty, setQty] = useState<number>(1);
-//   const stars = Math.round(product.rating ?? 0);
-
-//   const safeAdd = (payload: { id: string; title: string; price: number; img?: string; qty: number }) => {
-//     const fn = typeof addToCart === "function" ? addToCart
-//              : typeof add === "function" ? add
-//              : typeof addItem === "function" ? addItem
-//              : undefined;
-//     if (fn) {
-//       try {
-//         fn(payload);
-//       } catch (err) {
-//         console.error("Cart add error:", err);
-//         toast.error("Could not add to cart");
-//       }
-//     } else {
-//       toast.error("Cart provider not available");
-//     }
-//   };
-
-//   const createOrder = async (productId: string, qty = 1) => {
-//     try {
-//       const user = JSON.parse(localStorage.getItem("user") || "null");
-//       const token = localStorage.getItem("token");
-//       if (!user?._id || !token) {
-//         toast("Saved to cart — login to place an order", { icon: "🛒" });
-//         return;
-//       }
-//       const res = await fetch("/api/orders", {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//           Authorization: `Bearer ${token}`,
-//         },
-//         body: JSON.stringify({ user: user._id, productId, qty }),
-//       });
-//       if (res.ok) {
-//         toast.success("Order created");
-//       } else {
-//         let data;
-//         try { data = await res.json(); } catch {}
-//         toast.error(data?.message || "Failed to create order");
-//       }
-//     } catch (err) {
-//       console.error("Order API error:", err);
-//       toast.error("Could not reach order API");
-//     }
-//   };
-
-//   const handleAddToCart = async () => {
-//     safeAdd({ id: product.id, title: product.name, price: product.price, img: product.image, qty });
-//     toast.success(`${product.name} added to cart`);
-//     await createOrder(product.id, qty);
-//   };
-
-//   const handleBuyNow = async () => {
-//     // Add to cart and immediately create order (you can adapt to redirect to checkout)
-//     safeAdd({ id: product.id, title: product.name, price: product.price, img: product.image, qty });
-//     toast.success(`Placing order for ${product.name}...`);
-//     await createOrder(product.id, qty);
-//   };
-
-//   return (
-//     <div className="max-w-6xl mx-auto px-4 py-12">
-//       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-//         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-//           {product.image ? (
-//             // eslint-disable-next-line @next/next/no-img-element
-//             <img src={product.image} alt={product.name} className="w-full h-[480px] object-cover rounded-lg shadow-md" />
-//           ) : (
-//             <div className="w-full h-[480px] rounded-lg bg-gray-100 flex items-center justify-center text-gray-500">No image</div>
-//           )}
-//         </motion.div>
-
-//         <div>
-//           <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
-//           <div className="flex items-center gap-3 mb-4">
-//             <div className="flex items-center gap-1">
-//               {Array.from({ length: 5 }).map((_, i) => (
-//                 <svg key={i} className={`w-4 h-4 ${i < stars ? "text-yellow-400" : "text-gray-300"}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-//                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.18 3.634a1 1 0 0 0 .95.69h3.812c.969 0 1.371 1.24.588 1.81l-3.085 2.24a1 1 0 0 0-.364 1.118l1.18 3.634c.3.921-.755 1.688-1.54 1.118L10 15.347l-3.09 2.774c-.785.57-1.84-.197-1.54-1.118l1.18-3.634a1 1 0 0 0-.364-1.118L2.102 9.06c-.783-.57-.38-1.81.588-1.81h3.812a1 1 0 0 0 .95-.69l1.18-3.634z" />
-//                 </svg>
-//               ))}
-//             </div>
-//             <div className="text-sm text-gray-500">• {product.rating ?? "—"} rating</div>
-//           </div>
-
-//           <p className="text-xl font-semibold text-indigo-600 mb-4">₹{product.price.toFixed(0)}</p>
-//           <p className="text-gray-700 mb-6">{product.description}</p>
-
-//           <div className="flex items-center gap-4 mb-6">
-//             <div className="flex items-center border rounded">
-//               <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="px-3 py-2">-</button>
-//               <div className="px-4 py-2">{qty}</div>
-//               <button onClick={() => setQty((q) => q + 1)} className="px-3 py-2">+</button>
-//             </div>
-
-//             <div className="text-sm text-gray-500">SKU: {product.sku ?? "—"}</div>
-//           </div>
-
-//           <div className="flex gap-3">
-//             <button onClick={handleAddToCart} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-md">
-//               Add to Cart
-//             </button>
-//             <button onClick={handleBuyNow} className="border px-5 py-3 rounded-md">
-//               Buy Now
-//             </button>
-//             <Link href="/products" className="ml-auto text-sm text-indigo-600 hover:underline self-center">Back to products</Link>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-
-//   );
-// }
-
-
-// app/products/[id]/page.tsx
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { motion } from "framer-motion";
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useCart } from "@/components/CartProvider";
 import { toast } from "react-hot-toast";
-import { Star, Minus, Plus, ArrowLeft, ShoppingCart, Zap } from "lucide-react";
-import { makeProducts, Product as LibProduct } from "@/lib/products";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Star,
+  ShoppingCart,
+  ArrowLeft,
+  ShieldCheck,
+  Truck,
+  RotateCcw,
+  Minus,
+  Plus,
+  Share2,
+  Heart,
+  ChevronRight,
+  Globe,
+  Award
+} from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 
-/** Enhanced Product type with rating */
-interface EnhancedProduct extends LibProduct {
-  rating?: number;
-  category?: string;
-  inStock?: boolean;
-  features?: string[];
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  price: number;
+  stock: number;
+  category: string;
+  rating: number;
+  images: any;
+  createdAt: string;
 }
 
-function ProductDetailClient({ product }: { product: LibProduct }) {
-  // Enhance product with additional data
-  const enhancedProduct: EnhancedProduct = {
-    ...product,
-    rating: 4.5, // Default rating
-    category: "Electronics", // Default category
-    inStock: true,
-    features: [
-      "Premium quality materials",
-      "Fast shipping available",
-      "30-day return policy",
-      "1-year warranty included"
-    ]
-  };
-
+export default function ProductDetailPage() {
+  const { id } = useParams();
+  const router = useRouter();
   const { addToCart } = useCart();
-  const [quantity, setQuantity] = useState<number>(1);
-  const [selectedImage, setSelectedImage] = useState(0);
-  const stars = Math.round(enhancedProduct.rating ?? 0);
 
-  // Mock additional images for gallery
-  const productImages = [
-    enhancedProduct.image,
-    enhancedProduct.image, // In real app, these would be different images
-    enhancedProduct.image,
-    enhancedProduct.image
-  ].filter(Boolean) as string[];
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [quantity, setQuantity] = useState(1);
+  const [activeImage, setActiveImage] = useState(0);
 
-  const handleAddToCart = async () => {
-    try {
-      if (addToCart) {
-        addToCart({ 
-          id: enhancedProduct.id, 
-          title: enhancedProduct.name, 
-          price: enhancedProduct.price, 
-          img: enhancedProduct.image, 
-          qty: quantity 
-        });
-        toast.success(`🎉 ${enhancedProduct.name} added to cart!`);
-        
-        // Attempt to create order if user is logged in
-        const user = JSON.parse(localStorage.getItem("user") || "null");
-        const token = localStorage.getItem("accessToken");
-        if (user?.id && token) {
-          fetch("/api/orders", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ user: user.id, productId: enhancedProduct.id, qty: quantity }),
-          }).catch(() => {
-            // Silent fail - order creation is optional
-          });
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const res = await fetch(`/api/products/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setProduct(data);
+        } else {
+          toast.error("Specimen not found in archive");
         }
-      } else {
-        toast.error("Cart functionality not available");
+      } catch (error) {
+        toast.error("Critical retrieval error");
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      toast.error("Failed to add item to cart");
-    }
+    };
+
+    if (id) fetchProduct();
+  }, [id]);
+
+  const handleAddToCart = () => {
+    if (!product) return;
+
+    addToCart({
+      id: product.id,
+      title: product.name,
+      price: product.price,
+      img: productImageList[0],
+      qty: quantity
+    });
+    toast.success(`Acquisition successful: ${product.name}`);
   };
 
-  const handleBuyNow = async () => {
-    await handleAddToCart();
-    // In a real app, you would redirect to checkout
-    toast.success("Ready to checkout! Redirecting...");
-  };
-
-  const decreaseQuantity = () => {
-    setQuantity(prev => Math.max(1, prev - 1));
-  };
-
-  const increaseQuantity = () => {
-    setQuantity(prev => prev + 1);
-  };
-
-  return (
-    <div className="min-h-screen bg-linear-to-b from-gray-50 to-white">
-      {/* Navigation */}
-      <div className="border-b border-gray-200 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link 
-              href="/products" 
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Products
-            </Link>
-            <div className="text-sm text-gray-500">
-              Home / Products / <span className="text-gray-900">{enhancedProduct.name}</span>
-            </div>
-          </div>
-        </div>
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+        <div className="w-16 h-16 border-t-4 border-indigo-600 rounded-full animate-spin mb-6"></div>
+        <p className="text-gray-400 font-black tracking-[0.2em] uppercase text-xs">Decoding Specimen</p>
       </div>
-
-      {/* Product Details */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Image Gallery */}
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            className="space-y-4"
-          >
-            {/* Main Image */}
-            <div className="aspect-square w-full overflow-hidden rounded-2xl bg-gray-100 shadow-lg">
-              {productImages[selectedImage] ? (
-                <Image
-                  src={productImages[selectedImage]}
-                  alt={enhancedProduct.name}
-                  width={600}
-                  height={600}
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                  priority
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-2"></div>
-                    <span className="text-sm">No image available</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Thumbnail Gallery */}
-            {productImages.length > 1 && (
-              <div className="grid grid-cols-4 gap-3">
-                {productImages.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={`aspect-square overflow-hidden rounded-xl border-2 transition-all duration-200 ${
-                      selectedImage === index 
-                        ? "border-indigo-600 ring-2 ring-indigo-200" 
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    <Image
-                      src={image}
-                      alt={`${enhancedProduct.name} view ${index + 1}`}
-                      width={100}
-                      height={100}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
-          </motion.div>
-
-          {/* Product Info */}
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="space-y-6"
-          >
-            {/* Category & Stock */}
-            <div className="space-y-2">
-              {enhancedProduct.category && (
-                <span className="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 text-sm font-medium rounded-full">
-                  {enhancedProduct.category}
-                </span>
-              )}
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${enhancedProduct.inStock ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                <span className="text-sm text-gray-600">
-                  {enhancedProduct.inStock ? 'In Stock' : 'Out of Stock'}
-                </span>
-              </div>
-            </div>
-
-            {/* Title */}
-            <h1 className="text-4xl font-bold text-gray-900 leading-tight">
-              {enhancedProduct.name}
-            </h1>
-
-            {/* Rating */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    className={`w-5 h-5 ${
-                      star <= stars 
-                        ? "text-yellow-400 fill-yellow-400" 
-                        : "text-gray-300"
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className="text-gray-600">
-                {enhancedProduct.rating?.toFixed(1)} rating
-              </span>
-              <span className="text-gray-400">•</span>
-              <span className="text-indigo-600 font-medium">42 reviews</span>
-            </div>
-
-            {/* Price */}
-            <div className="flex items-baseline gap-3">
-              <span className="text-4xl font-bold text-gray-900">
-                ₹{enhancedProduct.price}
-              </span>
-              <span className="text-lg text-gray-500 line-through">₹{(enhancedProduct.price * 1.2).toFixed(0)}</span>
-              <span className="px-2 py-1 bg-green-100 text-green-700 text-sm font-medium rounded">
-                20% OFF
-              </span>
-            </div>
-
-            {/* Description */}
-            <div className="prose prose-gray">
-              <p className="text-lg text-gray-700 leading-relaxed">
-                {enhancedProduct.description}
-              </p>
-            </div>
-
-            {/* Features */}
-            <div className="space-y-3">
-              <h3 className="font-semibold text-gray-900">Key Features</h3>
-              <ul className="space-y-2">
-                {enhancedProduct.features?.map((feature, index) => (
-                  <li key={index} className="flex items-center gap-3 text-gray-600">
-                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full"></div>
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Quantity Selector */}
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700">
-                Quantity
-              </label>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden">
-                  <button
-                    onClick={decreaseQuantity}
-                    className="px-4 py-3 text-gray-600 hover:bg-gray-50 transition-colors"
-                    disabled={quantity <= 1}
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="px-6 py-3 text-lg font-semibold min-w-[60px] text-center">
-                    {quantity}
-                  </span>
-                  <button
-                    onClick={increaseQuantity}
-                    className="px-4 py-3 text-gray-600 hover:bg-gray-50 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="text-sm text-gray-500">
-                  Only 12 left in stock
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-6">
-              <motion.button
-                onClick={handleAddToCart}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center justify-center gap-3 bg-indigo-600 text-white px-8 py-4 rounded-xl font-semibold hover:bg-indigo-700 transition-colors shadow-lg hover:shadow-xl flex-1"
-              >
-                <ShoppingCart className="w-5 h-5" />
-                Add to Cart
-              </motion.button>
-              
-              <motion.button
-                onClick={handleBuyNow}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center justify-center gap-3 bg-linear-to-r from-orange-500 to-red-500 text-white px-8 py-4 rounded-xl font-semibold hover:from-orange-600 hover:to-red-600 transition-colors shadow-lg hover:shadow-xl flex-1"
-              >
-                <Zap className="w-5 h-5" />
-                Buy Now
-              </motion.button>
-            </div>
-
-            {/* Additional Info */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-6 border-t border-gray-200">
-              <div className="text-center">
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-2">
-                  <span className="text-green-600 text-sm font-bold">✓</span>
-                </div>
-                <div className="text-sm font-medium text-gray-900">Free Shipping</div>
-                <div className="text-xs text-gray-500">On orders over ₹999</div>
-              </div>
-              
-              <div className="text-center">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-2">
-                  <span className="text-blue-600 text-sm font-bold">↺</span>
-                </div>
-                <div className="text-sm font-medium text-gray-900">Easy Returns</div>
-                <div className="text-xs text-gray-500">30-day return policy</div>
-              </div>
-              
-              <div className="text-center">
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-2">
-                  <span className="text-purple-600 text-sm font-bold">🛡️</span>
-                </div>
-                <div className="text-sm font-medium text-gray-900">2-Year Warranty</div>
-                <div className="text-xs text-gray-500">Full protection</div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Server component wrapper: finds product by id and renders client component
- */
-function ProductPage({ params }: { params: { id: string } }) {
-  const { id } = params;
-  const products = makeProducts();
-  const product = products.find((p) => String(p.id) === String(id));
+    );
+  }
 
   if (!product) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-white p-6">
         <div className="text-center">
-          <h2 className="text-2xl font-semibold mb-2">Product not found</h2>
-          <p className="text-gray-500 mb-4">We couldn&apos;t find the product you were looking for.</p>
-          <Link href="/products" className="text-indigo-600 hover:underline">Back to products</Link>
+          <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-8">
+            <Globe className="text-gray-200" size={40} />
+          </div>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tighter mb-4 uppercase">SPECIMEN VOID.</h1>
+          <p className="text-gray-400 font-bold mb-12 uppercase tracking-widest text-xs">The requested item dose not exist in the current collection.</p>
+          <Link href="/products" className="inline-flex items-center gap-2 px-10 py-4 bg-gray-900 text-white rounded-2xl font-black text-sm uppercase">
+            <ArrowLeft size={16} /> Return to archive
+          </Link>
         </div>
       </div>
     );
   }
 
-  // Render the client component with product data
-  return <ProductDetailClient product={product} />;
-}
+  const productImageList = Array.isArray(product.images)
+    ? product.images
+    : (typeof product.images === 'string' ? [product.images] : ["https://images.unsplash.com/photo-1598033129183-c4f50c717658?q=80&w=800"]);
 
-export default ProductPage;
+  return (
+    <div className="min-h-screen bg-white pb-32">
+      {/* Dynamic Header */}
+      <section className="pt-32 pb-12 px-6">
+        <div className="max-w-7xl mx-auto">
+          <Link
+            href="/products"
+            className="inline-flex items-center gap-3 text-xs font-black tracking-widest text-gray-400 hover:text-gray-900 transition-all uppercase mb-12 group"
+          >
+            <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+            Back to catalogue archive
+          </Link>
+
+          <div className="flex flex-col lg:flex-row gap-20">
+            {/* Architectural Gallery */}
+            <div className="w-full lg:w-1/2 space-y-8">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="relative aspect-square bg-gray-50 rounded-[60px] overflow-hidden border border-gray-100 shadow-inner group"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent z-10 pointer-events-none" />
+                <Image
+                  src={productImageList[activeImage]}
+                  alt={product.name}
+                  fill
+                  className="object-contain p-12 transition-transform duration-1000 group-hover:scale-110"
+                  priority
+                />
+                <div className="absolute top-8 right-8 z-20">
+                  <button className="w-12 h-12 bg-white/80 backdrop-blur-md rounded-2xl flex items-center justify-center text-gray-400 hover:text-red-500 transition-all shadow-sm">
+                    <Heart size={20} />
+                  </button>
+                </div>
+              </motion.div>
+
+              {productImageList.length > 1 && (
+                <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                  {productImageList.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveImage(idx)}
+                      className={`relative w-24 h-24 rounded-3xl overflow-hidden border-2 transition-all flex-shrink-0 ${activeImage === idx ? 'border-gray-900 scale-105 shadow-xl shadow-gray-200' : 'border-gray-100 opacity-40 hover:opacity-100'}`}
+                    >
+                      <Image src={img} alt="" fill className="object-cover p-2" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Specimen Specification */}
+            <div className="w-full lg:w-1/2">
+              <motion.div
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="space-y-10"
+              >
+                <div>
+                  <div className="flex items-center gap-4 mb-6">
+                    <span className="bg-gray-900 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
+                      Authentic Archival
+                    </span>
+                    <div className="h-[1px] flex-1 bg-gray-100" />
+                  </div>
+                  <h1 className="text-5xl md:text-7xl font-black text-gray-900 tracking-tighter leading-[0.85] uppercase mb-6">
+                    {product.name}
+                  </h1>
+                  <div className="flex items-center gap-4">
+                    <div className="flex">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} size={16} className={i < Math.round(product.rating) ? "text-indigo-600 fill-indigo-600" : "text-gray-100"} />
+                      ))}
+                    </div>
+                    <span className="text-xs font-black text-gray-300 uppercase tracking-widest">Level {product.rating} Status</span>
+                  </div>
+                </div>
+
+                <div className="p-10 bg-gray-50 rounded-[48px] border border-gray-100">
+                  <div className="flex items-end gap-6 mb-4">
+                    <span className="text-5xl font-black text-gray-900">₹{product.price}</span>
+                    <span className="text-xl font-black text-gray-300 line-through mb-1">₹{(product.price * 1.5).toFixed(0)}</span>
+                  </div>
+                  <p className="text-xs font-black text-indigo-600 uppercase tracking-widest">Archive Discount Applied</p>
+                </div>
+
+                <p className="text-xl text-gray-500 font-medium leading-relaxed border-l-2 border-gray-100 pl-8">
+                  {product.description || "Every detail of this specimen has been engineered for maximal performance and aesthetic purity. A cornerstone of the current editorial collection."}
+                </p>
+
+                <div className="pt-8 space-y-8">
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                      <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all text-gray-400">
+                        <Minus size={18} />
+                      </button>
+                      <span className="w-12 text-center font-black text-2xl">{quantity}</span>
+                      <button onClick={() => setQuantity(quantity + 1)} className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all text-gray-400">
+                        <Plus size={18} />
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={handleAddToCart}
+                      className="flex-1 bg-gray-900 text-white h-20 rounded-[30px] font-black text-lg flex items-center justify-center gap-4 hover:bg-indigo-600 hover:-translate-y-1 transition-all duration-500 shadow-2xl shadow-gray-200"
+                    >
+                      <ShoppingCart size={24} /> ADD TO ACQUISITION
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 pt-8">
+                    <div className="flex items-center gap-4 p-6 bg-white border border-gray-50 rounded-3xl group hover:border-indigo-100 transition-all">
+                      <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                        <Truck size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-gray-300 uppercase mb-1">Logistics</p>
+                        <p className="text-sm font-black text-gray-900">48H EXPRESS</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 p-6 bg-white border border-gray-50 rounded-3xl group hover:border-indigo-100 transition-all">
+                      <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                        <Award size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-gray-300 uppercase mb-1">Guaranty</p>
+                        <p className="text-sm font-black text-gray-900">LIFETIME ACCESS</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Feature Narrative Section */}
+      <section className="py-32 bg-gray-50 mx-6 rounded-[60px] mt-20 px-12">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-24 items-center">
+          <div className="relative aspect-video rounded-[40px] overflow-hidden shadow-2xl">
+            <Image
+              src="https://images.unsplash.com/photo-1491333078588-55b6733c7de6?q=80&w=800"
+              alt="Production"
+              fill
+              className="object-cover grayscale"
+            />
+            <div className="absolute inset-0 bg-indigo-600/10 mix-blend-multiply" />
+          </div>
+          <div>
+            <span className="text-xs font-black tracking-[0.4em] text-indigo-600 uppercase mb-4 block">Manufacturing Excellence</span>
+            <h2 className="text-4xl md:text-6xl font-black text-gray-900 tracking-tighter mb-8 italic uppercase leading-[0.9]">
+              Engineered <br /> for <span className="text-gray-300">Permanence.</span>
+            </h2>
+            <p className="text-xl text-gray-500 font-medium leading-relaxed">
+              Utilizing next-generation sustainable textiles and precision-cut components, each piece represents the pinnacle of archival object design. Built to survive seasons and define standards.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Recommendation Engine */}
+      <section className="py-32 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-end justify-between mb-16 border-b border-gray-100 pb-12">
+            <div>
+              <span className="text-xs font-black tracking-[0.4em] text-gray-400 uppercase mb-4 block">Archive Matches</span>
+              <h2 className="text-5xl font-black text-gray-900 tracking-tighter uppercase whitespace-nowrap">SIMILAR <br /> <span className="text-gray-300">OBJECTS.</span></h2>
+            </div>
+            <Link href="/products" className="hidden md:flex items-center gap-3 font-black text-sm uppercase tracking-widest text-gray-400 hover:text-gray-900 transition-all">
+              View Complete Archive <ChevronRight size={18} />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="group cursor-pointer">
+                <div className="relative aspect-[3/4] bg-gray-50 rounded-[32px] overflow-hidden mb-6 border border-gray-100 transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-2xl group-hover:shadow-gray-100">
+                  <Image
+                    src="https://images.unsplash.com/photo-1601924582970-9238bcb495d9?q=80&w=800"
+                    alt="Product"
+                    fill
+                    className="object-contain p-8 group-hover:scale-110 transition-transform duration-1000"
+                  />
+                </div>
+                <h3 className="text-lg font-black text-gray-900 tracking-tight uppercase group-hover:text-indigo-600 transition-colors">ARCHIVAL SPECIMEN {i + 1}</h3>
+                <p className="text-gray-400 font-black text-sm uppercase tracking-widest mt-1">₹{(product.price * 0.85 + i * 500).toFixed(0)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}

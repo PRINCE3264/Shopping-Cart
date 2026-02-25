@@ -1,25 +1,11 @@
-import mongoose from "mongoose";
+import prisma from "./prisma";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-  throw new Error("Please define the MONGODB_URI in .env.local");
-}
-
-// use a number or boolean with proper type inference
-let isConnected = false;
-
+/**
+ * connectDB is a no-op for Prisma as it handles connection pooling automatically,
+ * but we keep the export for compatibility with existing imports.
+ */
 export const connectDB = async () => {
-  if (isConnected) return;
-
-  try {
-    const db = await mongoose.connect(MONGODB_URI);
-
-    // readyState returns a number (1 = connected)
-    isConnected = db.connections[0].readyState === 1;
-
-    console.log("✅ MongoDB Connected Successfully...!");
-  } catch (error) {
-    console.error("❌ MongoDB Connection Error:", error);
-  }
+  // Prisma handles connections automatically.
+  // We can optionally call prisma.$connect() but it's not strictly required.
+  return prisma;
 };
